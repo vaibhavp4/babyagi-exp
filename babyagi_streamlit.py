@@ -38,13 +38,13 @@ class TaskCreationChain(LLMChain):
     def from_llm(cls, llm: BaseLLM, objective: str, verbose: bool = True) -> LLMChain:
         """Get the response parser."""
         task_creation_template = (
-            "You are a research assistant AI that investigates a file rigourously"
+            "You are a career assistant AI that investigates a CV rigourously"
             " by asking new questions based on the results of a summarisation agent"
-            " The file you are studying: {objective},"
+            " Your objective is to ask questions that will help the jobseeker improve their resume and grow in their career"
             " The last question had the following answer: {result}."
             " This result was based on this question: {task_description}."
             " These are pending questions that are to be processed: {incomplete_tasks}."
-            " Based on the result, ask two new research questions to be investigated"
+            " Based on the result, ask two new questions to be investigated"
             " that do not overlap with pending questions and neither are a subset of previous questions."
             " Return the questions as an array."
         )
@@ -113,7 +113,8 @@ class ExecutionChain(LLMChain):
     def from_llm(cls, llm: BaseLLM, vectorstore: VectorStore, vectors: Any, verbose: bool = True) -> LLMChain:
         """Get the response parser."""
         execution_template = (
-            "You are an AI who generates new insights based on the context"
+            "You are a recruiter and career coach AI who summarises insights based on the resume of the jobseeker"
+            "You also look at the right framework and best practice suited to the resume you are reviewing"
             " Take into account these previously generated insights, do not repeat them: {context}."
             " Question you are investigating: {task}."
             " Context: {new_information}."
@@ -147,7 +148,7 @@ class Message:
 
     def __init__(self, label: str):
         message_area, icon_area = st.columns([10, 1])
-        icon_area.image(self.ai_icon, caption="BabyAGI for understanding a file")
+        icon_area.image(self.ai_icon, caption="BabyAGI for resume review")
 
         # Expander
         self.exp = message_area.expander(label=label, expanded=True)
@@ -294,7 +295,7 @@ def main():
             vectors = make_vectors(user_file)
             qa = RetrievalQA.from_chain_type(llm=OpenAI(), chain_type="stuff", retriever=vectors.as_retriever())
             objective = qa.run("Summarise the file in one sentence")
-            first_task = "Summarise key insights from the file"
+            first_task = st.text_input("Enter first task", "Analyse this resume in detail")
             embedding_model = OpenAIEmbeddings()
             vectorstore = FAISS.from_texts(["_"], embedding_model, metadatas=[{"task":first_task}])
         
