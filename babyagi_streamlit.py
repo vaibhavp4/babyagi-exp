@@ -8,8 +8,6 @@ import io
 from docx import Document
 from langchain import LLMChain, OpenAI, PromptTemplate
 from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.chains.question_answering import load_qa_chain
 from langchain.llms import BaseLLM
 from langchain.vectorstores import FAISS
 from langchain.vectorstores.base import VectorStore
@@ -40,13 +38,13 @@ class TaskCreationChain(LLMChain):
     def from_llm(cls, llm: BaseLLM, objective: str, verbose: bool = True) -> LLMChain:
         """Get the response parser."""
         task_creation_template = (
-            "You are a career assistant AI that investigates a CV rigourously"
+            "You are a research assistant AI that investigates a file rigourously"
             " by asking new questions based on the results of a summarisation agent"
-            " Your objective is to ask questions that will help the jobseeker improve their resume and grow in their career"
+            " The file you are studying: {objective},"
             " The last question had the following answer: {result}."
             " This result was based on this question: {task_description}."
             " These are pending questions that are to be processed: {incomplete_tasks}."
-            " Based on the result, ask two new questions to be investigated"
+            " Based on the result, ask two new research questions to be investigated"
             " that do not overlap with pending questions and neither are a subset of previous questions."
             " Return the questions as an array."
         )
@@ -115,8 +113,7 @@ class ExecutionChain(LLMChain):
     def from_llm(cls, llm: BaseLLM, vectorstore: VectorStore, vectors: Any, verbose: bool = True) -> LLMChain:
         """Get the response parser."""
         execution_template = (
-            "You are a recruiter and career coach AI who summarises insights based on the resume of the jobseeker"
-            "You also look at the right framework and best practice suited to the resume you are reviewing"
+            "You are an AI who generates new insights based on the context"
             " Take into account these previously generated insights, do not repeat them: {context}."
             " Question you are investigating: {task}."
             " Context: {new_information}."
@@ -150,7 +147,7 @@ class Message:
 
     def __init__(self, label: str):
         message_area, icon_area = st.columns([10, 1])
-        icon_area.image(self.ai_icon, caption="BabyAGI for resume review")
+        icon_area.image(self.ai_icon, caption="BabyAGI for understanding a file")
 
         # Expander
         self.exp = message_area.expander(label=label, expanded=True)
@@ -285,9 +282,6 @@ def main():
 
     with st.sidebar:
         openai_api_key = st.text_input('Your OpenAI API KEY', type="password")
-        pinecone_api_key = st.text_input('Your Pinecone API KEY', type="password")
-        pinecone_environment = st.text_input('Your Pinecone Environment')
-
     st.title("BabyAGI x FileQnA")
     user_file = st.file_uploader("Upload a file", type=["txt", "pdf","docx"])
     max_iterations = st.number_input("Max iterations", value=4, min_value=1, step=1)
@@ -296,13 +290,11 @@ def main():
 
     if button:
         try:
-            os.environ["PINECONE_API_KEY"]=pinecone_api_key
-            os.environ["PINECONE_ENVIRONMENT"]=pinecone_environment
             os.environ["OPENAI_API_KEY"] = openai_api_key
             vectors = make_vectors(user_file)
             qa = RetrievalQA.from_chain_type(llm=OpenAI(), chain_type="stuff", retriever=vectors.as_retriever())
             objective = qa.run("Summarise the file in one sentence")
-            first_task = st.text_input("Enter first task", "Analyse this resume in detail")
+            first_task = "Summarise key insights from the file"
             embedding_model = OpenAIEmbeddings()
             vectorstore = FAISS.from_texts(["_"], embedding_model, metadatas=[{"task":first_task}])
         
