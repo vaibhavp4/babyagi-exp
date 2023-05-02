@@ -8,6 +8,8 @@ import io
 from docx import Document
 from langchain import LLMChain, OpenAI, PromptTemplate
 from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.chains.question_answering import load_qa_chain
 from langchain.llms import BaseLLM
 from langchain.vectorstores import FAISS
 from langchain.vectorstores.base import VectorStore
@@ -283,6 +285,9 @@ def main():
 
     with st.sidebar:
         openai_api_key = st.text_input('Your OpenAI API KEY', type="password")
+        pinecone_api_key = st.text_input('Your Pinecone API KEY', type="password")
+        pinecone_environment = st.text_input('Your Pinecone Environment')
+
     st.title("BabyAGI x FileQnA")
     user_file = st.file_uploader("Upload a file", type=["txt", "pdf","docx"])
     max_iterations = st.number_input("Max iterations", value=4, min_value=1, step=1)
@@ -291,6 +296,8 @@ def main():
 
     if button:
         try:
+            os.environ["PINECONE_API_KEY"]=pinecone_api_key
+            os.environ["PINECONE_ENVIRONMENT"]=pinecone_environment
             os.environ["OPENAI_API_KEY"] = openai_api_key
             vectors = make_vectors(user_file)
             qa = RetrievalQA.from_chain_type(llm=OpenAI(), chain_type="stuff", retriever=vectors.as_retriever())
